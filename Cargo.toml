@@ -1,0 +1,10 @@
+[package]
+name = "binary-to-image"
+version = "0.1.0"
+authors = ["noesterle <noesterle1@gmail.com>"]
+
+[dependencies]
+
+[lib]
+name="lib"
+path="src/lib.rs"
