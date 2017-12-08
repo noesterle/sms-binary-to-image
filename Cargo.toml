@@ -4,7 +4,8 @@ version = "0.1.0"
 authors = ["noesterle <noesterle1@gmail.com>"]
 
 [dependencies]
+xml-rs = "0.6.1" #Process XML
 
 [lib]
 name="lib"
-path="src/lib.rs"
+path="src/lib.rs" #Custom made library

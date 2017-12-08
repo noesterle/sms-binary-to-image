@@ -3,3 +3,9 @@ pub mod binary_to_image {
         println!("Hello Image");
     }
 }
+
+pub mod xml {
+    pub fn read_xml() {
+        println!("Reading xml");
+    }
+}
