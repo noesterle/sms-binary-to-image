@@ -7,8 +7,8 @@ use std::fs::File;
 use std::path::Path;
 
 fn main() {
-    println!("Hello, world!");
-    binary_to_image::test();
+    //println!("Hello, world!");
+    //binary_to_image::test();
     //Take in location of sms.xml from user
     //Create File object.
     let file = File::open("sms-20171201173215.xml").unwrap();

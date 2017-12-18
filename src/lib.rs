@@ -16,7 +16,6 @@ pub mod xml_reader {
 
 
     pub fn read_xml(path: &Path) {
-        println!("Reading xml");
         //let buf = BufReader::new(file);
         let xml = r#"<tag1 att1 = "test">
                         <tag2><!--Test comment-->Test</tag2>
@@ -29,39 +28,72 @@ pub mod xml_reader {
         let mut reader = Reader::from_file(path).unwrap();
         reader.trim_text(true);
 
-        let mut count = 0;
         let mut txt:Vec<String> = Vec::new();
         let mut buf:Vec<u8> = Vec::new();
 
+        parse(&mut reader, &mut txt,&mut buf);
+
+    }
+
+    fn parse(mut reader: &mut quick_xml::reader::Reader<BufReader<File>>, mut txt: &mut Vec<String>, mut buf: &mut Vec<u8>) {
+        use std::ops::Add;
+
+        let mut count = 0;
         // The `Reader` does not implement `Iterator` because it outputs borrowed data (`Cow`s)
+        let tabs = "    ".to_string();
+        let mut depth = 0;
+        //This crate does not allow me to retrieve specific attributes by calling the 'key' to get
+        //the respective 'value'.
+        //Will either need to figure out the pattern of what tags always have way attrs and what
+        //the index is, or find a new crate that will allow key/value querying.
         loop {
             match reader.read_event(&mut buf) {
                 Ok(Event::Start(ref e)) => {
-                        println!("{:?}",String::from_utf8(e.name().to_vec()).unwrap()); //Prints name of tag.
-                        //println!("{:?}",e.name());
-                        //match e.name() {
-                        //    //b"sms" => println!("sms"),
-                        //    //b"smses" => println!("smses"),
-                        //    b"tag1" => println!("tag1"),
-                        //    b"tag2" => println!("tag2"),
-                        //    _ => continue,
-                        //}
+                    let attr = e.attributes();
+                    //Print results
+                    for _ in 0..depth {
+                        print!("{}",tabs)
+                    }
+                    println!("{:?} attrs: {:?}",String::from_utf8(e.name().to_vec()).unwrap(),
+                        attr.fold(String::new(), |acc, a| acc.add(&a.unwrap().unescape_and_decode_value(&reader).unwrap().add("   ")))
+                        //attr.count()
+                        ); //Prints name of tag.
+                    depth += 1;
                 },
                 Ok(Event::Eof) => break, // exits the loop when reaching end of file
                 Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
                 Ok(Event::Text(e)) => {
+                    for _ in 0..depth {
+                        print!("{}",tabs)
+                    }
                     txt.push(e.unescape_and_decode(&reader).unwrap()); //Gets text between tags.
                     //println!("{:?}",String::from_utf8(e.name().to_vec()).unwrap());
                 },
                 Ok(Event::End(e)) => {
+                    depth -= 1;
+                    for _ in 0..depth {
+                        print!("{}",tabs)
+                    }
                     println!("End");
 
                 },
                 Ok(Event::Comment(e)) => {
+                    for _ in 0..depth {
+                        print!("{}",tabs)
+                    }
                     println!("Comment");
                 },
                 Ok(Event::Empty(e)) => {
-                    println!("Empty");
+                    let attr = e.attributes();
+                    for _ in 0..depth {
+                        print!("{}",tabs)
+                    }
+                    print!("Empty: ");
+                    //println!("{:?}",String::from_utf8(e.name().to_vec()).unwrap()); //Prints name of tag.
+                    println!("{:?} attrs: {:?}",String::from_utf8(e.name().to_vec()).unwrap(),
+                        attr.fold(String::new(), |acc, a| acc.add(&a.unwrap().unescape_and_decode_value(&reader).unwrap().add("   ")))
+                        //attr.count()
+                        ); //Prints name of tag.
 
                 },
                 Ok(Event::CData(e)) => {
