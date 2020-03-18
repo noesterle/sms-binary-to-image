@@ -9,13 +9,14 @@ pub mod io_handler {
     use std::path::PathBuf;
 
     static image_writing: bool = true;
+    static image_dir: &str = "images";
 
     pub fn test() {
         println!("Hello Image");
     }
 
     pub fn create_image_dir() {
-        fs::create_dir_all("images").expect("unable to create images directory");
+        fs::create_dir_all(image_dir).expect("unable to create images directory");
     }
 
     pub fn convert_b64_to_image(b64: String) -> Vec<u8>{
@@ -33,32 +34,17 @@ pub mod io_handler {
     }
 
     pub fn find_new_filename(name: String) -> std::path::PathBuf {
-        let mut buf = PathBuf::from(format!("images/{}",&name));
+        let mut buf = PathBuf::from(format!("{}/{}", &image_dir, &name));
         let mut counter = 1;
         let buf = loop {
             if !(buf.as_path().exists()) {
                 break buf;
             }
-            buf = PathBuf::from(format!("images/{}{}", counter,&name));
+            buf = PathBuf::from(format!("{}/{}{}", &image_dir, counter, &name));
             //println!("{} exists, generating new path.", temp_path.display());
             counter = counter + 1;
         };
         return buf;
-
-
-        //let mut temp_path_str = format!("images/{}",&name);
-        ////let mut temp_path = Path::new(&format!("images/{}",&name));
-        //let mut temp_path = Path::new(&temp_path_str);
-        //let mut counter = 1;
-        //let img_path = loop {
-        //   if !(temp_path.exists()){
-        //        break temp_path;
-        //    }
-        //    temp_path_str = format!("images/{}{}",counter,&name);
-        //    temp_path = Path::new(&temp_path_str);
-        //    //println!("{} exists, generating new path.", temp_path.display());
-        //    counter=counter+1;
-        //};
     }
 }
 
@@ -283,7 +269,6 @@ pub mod xml_reader {
 
         //println!("{}",msg_type);
         create_image_dir();
-//        fs::create_dir_all("images").expect("unable to create images directory");
 
         if(msg_type == jpg){
             //println!("FOUND JPEG TO WRITE TO FILE");
@@ -294,9 +279,6 @@ pub mod xml_reader {
 
             let bytes = convert_b64_to_image(jpg_contents.to_string());
             write_image_to_disk(img_path.as_path(), bytes);
-            //let mut ofile = File::create(&img_path).expect(&format!("Unable to open file: {}", img_path.display()));
-            //ofile.write_all(jpg_contents.as_bytes());
-            //println!("{}",&img_path.display());
         }
         else if(msg_type == png){
             //println!("FOUND PNG TO WRITE TO FILE");
@@ -304,9 +286,6 @@ pub mod xml_reader {
 
             let bytes = convert_b64_to_image(png_contents.to_string());
             write_image_to_disk(img_path.as_path(), bytes);
-            //let mut ofile = File::create(&img_path).expect(&format!("Unable to open file: {}", img_path.display()));
-            //ofile.write_all(png_contents.as_bytes());
-            //println!("{}",&img_path.display());
         }
         else if(msg_type == txt){
             //println!("FOUND TEXT OF AN IMAGE");
