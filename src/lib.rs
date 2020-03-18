@@ -8,11 +8,13 @@ pub mod xml_reader {
     extern crate quick_xml;
 
     use std::fs::File;
+    use std::io::Write;
     use std::path::Path;
     use std::io::BufReader;
     //use self::xml::reader::{EventReader, XmlEvent};
     use self::quick_xml::reader::Reader;
     use self::quick_xml::events::Event;
+    use std::iter;
 
 
     pub fn read_xml(path: &Path) {
@@ -42,6 +44,7 @@ pub mod xml_reader {
         // The `Reader` does not implement `Iterator` because it outputs borrowed data (`Cow`s)
         let tabs = "    ".to_string();
         let mut depth = 0;
+        let debug_printing = false;
         //This crate does not allow me to retrieve specific attributes by calling the 'key' to get
         //the respective 'value'.
         //Will either need to figure out the pattern of what tags always have way attrs and what
@@ -51,66 +54,122 @@ pub mod xml_reader {
                 Ok(Event::Start(ref e)) => {
                     let attr = e.attributes();
                     //Print results
-                    for _ in 0..depth {
-                        print!("{}",tabs)
+                    if (debug_printing){
+                        for _ in 0..depth {
+                            print!("{}",tabs)
+                        }
+                        println!("{:?} attrs: {:?}",String::from_utf8(e.name().to_vec()).unwrap(),
+                            attr.fold(String::new(), |acc, a| acc.add(&a.unwrap().unescape_and_decode_value(&reader).unwrap().add("   ")))
+                            //attr.count()
+                            ); //Prints name of tag.
                     }
-                    println!("{:?} attrs: {:?}",String::from_utf8(e.name().to_vec()).unwrap(),
-                        attr.fold(String::new(), |acc, a| acc.add(&a.unwrap().unescape_and_decode_value(&reader).unwrap().add("   ")))
-                        //attr.count()
-                        ); //Prints name of tag.
                     depth += 1;
                 },
                 Ok(Event::Eof) => break, // exits the loop when reaching end of file
                 Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
                 Ok(Event::Text(e)) => {
-                    for _ in 0..depth {
-                        print!("{}",tabs)
+                    if(debug_printing){
+                        for _ in 0..depth {
+                            print!("{}",tabs)
+                        }
                     }
                     txt.push(e.unescape_and_decode(&reader).unwrap()); //Gets text between tags.
                     //println!("{:?}",String::from_utf8(e.name().to_vec()).unwrap());
                 },
                 Ok(Event::End(e)) => {
                     depth -= 1;
-                    for _ in 0..depth {
-                        print!("{}",tabs)
+                    if(debug_printing){
+                        for _ in 0..depth {
+                            print!("{}",tabs)
+                        }
+                        println!("End");
                     }
-                    println!("End");
 
                 },
                 Ok(Event::Comment(e)) => {
-                    for _ in 0..depth {
-                        print!("{}",tabs)
+                    if(debug_printing) {
+                        for _ in 0..depth {
+                            print!("{}",tabs)
+                        }
+                        println!("Comment");
                     }
-                    println!("Comment");
                 },
                 Ok(Event::Empty(e)) => {
+                    //This is where smses are found.
+                    //  Address is always the other persons number.
+                    //  Date is the epoch*1000
+                    //  Type='2' means sent, Type='1' means received
+                    //  readable_time is the time the message was sent/received
+                    //  Body is the message itself.
+                    //This is where parts are found.
+                    //  ct is the type (image/jpeg, text/plain, video/mp4, image/png)
+                    //  data is the info.
+                    //  name is the filename.
                     let attr = e.attributes();
-                    for _ in 0..depth {
-                        print!("{}",tabs)
+                    let vec_attrs = attr.clone().map(|a| a.unwrap().unescape_and_decode_value(&reader).unwrap()).collect::<Vec<String>>();
+                    if(debug_printing){
+                       for _ in 0..depth {
+                            print!("{}",tabs)
+                        }
+                        print!("Empty: ");
+                        //println!("{:?}",String::from_utf8(e.name().to_vec()).unwrap()); //Prints name of tag.
+                        println!("{:?} attrs: {:?}",String::from_utf8(e.name().to_vec()).unwrap(),
+                            attr.fold(String::new(), |acc, a| acc.add(&a.unwrap().unescape_and_decode_value(&reader).unwrap().add("   ")))
+                            //attr.count()
+                            ); //Prints name of tag.
+                    
+                        for _ in 0..depth {
+                            print!("{}",tabs)
+                        }
                     }
-                    print!("Empty: ");
-                    //println!("{:?}",String::from_utf8(e.name().to_vec()).unwrap()); //Prints name of tag.
-                    println!("{:?} attrs: {:?}",String::from_utf8(e.name().to_vec()).unwrap(),
-                        attr.fold(String::new(), |acc, a| acc.add(&a.unwrap().unescape_and_decode_value(&reader).unwrap().add("   ")))
-                        //attr.count()
-                        ); //Prints name of tag.
+                    let message_type = String::from_utf8(e.name().to_vec()).unwrap();
+                    if(message_type == "sms"){
+                        if(debug_printing){
+                            println!("SMS");
+                        }
+                        parse_sms(&vec_attrs);
+                    }
+                    else if(message_type == "mms"){
+                        if(debug_printing){
+                            println!("MMS NOT IMPL");
+                        }
+                    }
+                    else if(message_type == "part"){
+                        if(debug_printing){
+                            println!("PART");
+                        }
+                        parse_part(&vec_attrs);
+                    }
+                    else if(message_type == "addr"){
 
+                    }
+                    else if(message_type == "application/smil"){
+
+                    }
+                    else{
+                        println!("--- FOUND UNKNOWN TAG TYPE: '{}' ---", message_type);
+                    }
                 },
                 Ok(Event::CData(e)) => {
-                    println!("CData");
+                    if(debug_printing){
+                        println!("CData");
+                    }
 
                 },
                 Ok(Event::Decl(e)) => {
-                    println!("Decl");
-
+                    if(debug_printing){
+                        println!("Decl");
+                    }
                 },
                 Ok(Event::PI(e)) => {
-                    println!("PI");
-
+                    if(debug_printing){
+                        println!("PI");
+                    }
                 },
                 Ok(Event::DocType(e)) => {
-                    println!("DocType");
-
+                    if(debug_printing){
+                        println!("DocType");
+                    }
                 }
                 //_ => (),// There are several other `Event`s we do not consider here
 
@@ -121,8 +180,91 @@ pub mod xml_reader {
             buf.clear();
         }
         for item in txt.iter() {
-            println!("{}",item);
+            println!("TXT {}",item);
         }
         println!("Count: {}",count);
+    }
+
+    fn parse_sms(vec_sms: &Vec<String>){
+        let send = "1";
+        let receive = "2";
+        let send_or_receive = &vec_sms[3];
+        let text = &vec_sms[5];
+        let readable_date = &vec_sms[13];
+        let contact_name = &vec_sms[14];
+        
+        if(send_or_receive == send) {
+            println!("Received '{}' from {} at {}", text, contact_name, readable_date);
+        }
+        else if(send_or_receive == receive) {
+            println!("Sent '{}' to {} at {}.",text, contact_name, readable_date);
+        }
+
+    }
+
+    fn parse_part(vec_part: &Vec<String>){
+        use std::fs;
+
+        let jpg = "image/jpeg";
+        let png = "image/png";
+        let txt = "text/plain";
+        let smil = "application/smil";
+        let null = "null";
+
+        let msg_type = &vec_part[1];
+        let name = if &vec_part[2] == null {
+            vec_part[7].clone()
+            //iter::repeat(()).map(|()| thread_rng().sample(Alphanumeric)).take(7).collect::<String>()
+        }
+        else {
+            vec_part[2].clone()
+        };
+
+        let mut temp_path_str = format!("images/{}",&name);
+        //let mut temp_path = Path::new(&format!("images/{}",&name));
+        let mut temp_path = Path::new(&temp_path_str);
+        let mut counter = 1;
+        let img_path = loop {
+            if !(temp_path.exists()){
+                break temp_path;
+            }
+            temp_path_str = format!("images/{}{}",counter,&name);
+            temp_path = Path::new(&temp_path_str);
+            //println!("{} exists, generating new path.", temp_path.display());
+            counter=counter+1;
+        };
+
+        //println!("{}",msg_type);
+        fs::create_dir_all("images").expect("unable to create images directory");
+
+        if(msg_type == jpg){
+            //println!("FOUND JPEG TO WRITE TO FILE");
+            let mut jpg_contents = &vec_part[3];
+            if jpg_contents == null && vec_part.len() >= 10 {
+                jpg_contents = &vec_part[11];
+            }
+
+            let mut ofile = File::create(&img_path).expect(&format!("Unable to open file: {}", img_path.display()));
+            ofile.write_all(jpg_contents.as_bytes());
+            println!("{}",&img_path.display());
+        }
+        else if(msg_type == png){
+            //println!("FOUND PNG TO WRITE TO FILE");
+            let png_contents = &vec_part[11];
+
+            let mut ofile = File::create(&img_path).expect(&format!("Unable to open file: {}", img_path.display()));
+            ofile.write_all(png_contents.as_bytes());
+            println!("{}",&img_path.display());
+        }
+        else if(msg_type == txt){
+            //println!("FOUND TEXT OF AN IMAGE");
+            println!("{}",&vec_part[10]);
+        }
+        else if(msg_type == smil){
+
+        }
+        else {
+            println!("--- FOUND UNKNOWN MESSAGE TYPE: '{}' ---", msg_type);
+        }
     }
 }
