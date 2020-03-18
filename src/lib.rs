@@ -8,6 +8,8 @@ pub mod io_handler {
     use std::path::Path;
     use std::path::PathBuf;
 
+    static image_writing: bool = true;
+
     pub fn test() {
         println!("Hello Image");
     }
@@ -23,13 +25,40 @@ pub mod io_handler {
 
     pub fn write_image_to_disk(img_path: &Path, img_contents: Vec<u8>) {
         //print!("WRITING");
-        let mut ofile = File::create(&img_path).expect(&format!("Unable to open file: {}", img_path.display()));
-        ofile.write_all(&img_contents);
-        println!("{}",&img_path.display());
+        if(image_writing) {
+            let mut ofile = File::create(&img_path).expect(&format!("Unable to open file: {}", img_path.display()));
+            ofile.write_all(&img_contents);
+            println!("{}",&img_path.display());
+        }
     }
 
-    pub fn find_new_filename() -> std::path::PathBuf {
-        return PathBuf::new();
+    pub fn find_new_filename(name: String) -> std::path::PathBuf {
+        let mut buf = PathBuf::from(format!("images/{}",&name));
+        let mut counter = 1;
+        let buf = loop {
+            if !(buf.as_path().exists()) {
+                break buf;
+            }
+            buf = PathBuf::from(format!("images/{}{}", counter,&name));
+            //println!("{} exists, generating new path.", temp_path.display());
+            counter = counter + 1;
+        };
+        return buf;
+
+
+        //let mut temp_path_str = format!("images/{}",&name);
+        ////let mut temp_path = Path::new(&format!("images/{}",&name));
+        //let mut temp_path = Path::new(&temp_path_str);
+        //let mut counter = 1;
+        //let img_path = loop {
+        //   if !(temp_path.exists()){
+        //        break temp_path;
+        //    }
+        //    temp_path_str = format!("images/{}{}",counter,&name);
+        //    temp_path = Path::new(&temp_path_str);
+        //    //println!("{} exists, generating new path.", temp_path.display());
+        //    counter=counter+1;
+        //};
     }
 }
 
@@ -250,19 +279,7 @@ pub mod xml_reader {
             vec_part[2].clone()
         };
 
-        let mut temp_path_str = format!("images/{}",&name);
-        //let mut temp_path = Path::new(&format!("images/{}",&name));
-        let mut temp_path = Path::new(&temp_path_str);
-        let mut counter = 1;
-        let img_path = loop {
-            if !(temp_path.exists()){
-                break temp_path;
-            }
-            temp_path_str = format!("images/{}{}",counter,&name);
-            temp_path = Path::new(&temp_path_str);
-            //println!("{} exists, generating new path.", temp_path.display());
-            counter=counter+1;
-        };
+        let img_path = find_new_filename(name);
 
         //println!("{}",msg_type);
         create_image_dir();
@@ -276,7 +293,7 @@ pub mod xml_reader {
             }
 
             let bytes = convert_b64_to_image(jpg_contents.to_string());
-            write_image_to_disk(img_path, bytes);
+            write_image_to_disk(img_path.as_path(), bytes);
             //let mut ofile = File::create(&img_path).expect(&format!("Unable to open file: {}", img_path.display()));
             //ofile.write_all(jpg_contents.as_bytes());
             //println!("{}",&img_path.display());
@@ -286,7 +303,7 @@ pub mod xml_reader {
             let png_contents = &vec_part[11];
 
             let bytes = convert_b64_to_image(png_contents.to_string());
-            write_image_to_disk(img_path, bytes);
+            write_image_to_disk(img_path.as_path(), bytes);
             //let mut ofile = File::create(&img_path).expect(&format!("Unable to open file: {}", img_path.display()));
             //ofile.write_all(png_contents.as_bytes());
             //println!("{}",&img_path.display());
