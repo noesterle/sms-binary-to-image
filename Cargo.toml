@@ -5,6 +5,7 @@ authors = ["noesterle <noesterle1@gmail.com>"]
 
 [dependencies]
 quick-xml = "0.10.0" #Process XML
+base64 = "0.12.0" #Base64 encoding/decoding
 
 [lib]
 name="lib"

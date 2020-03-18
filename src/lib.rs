@@ -1,11 +1,41 @@
-pub mod binary_to_image {
+pub mod io_handler {
+    extern crate base64;
+
+    use self::base64::decode;
+    use std::fs;
+    use std::fs::File;
+    use std::io::Write;
+    use std::path::Path;
+    use std::path::PathBuf;
+
     pub fn test() {
         println!("Hello Image");
+    }
+
+    pub fn create_image_dir() {
+        fs::create_dir_all("images").expect("unable to create images directory");
+    }
+
+    pub fn convert_b64_to_image(b64: String) -> Vec<u8>{
+        //print!("DECODING");
+        return decode(b64).unwrap();
+    }
+
+    pub fn write_image_to_disk(img_path: &Path, img_contents: Vec<u8>) {
+        //print!("WRITING");
+        let mut ofile = File::create(&img_path).expect(&format!("Unable to open file: {}", img_path.display()));
+        ofile.write_all(&img_contents);
+        println!("{}",&img_path.display());
+    }
+
+    pub fn find_new_filename() -> std::path::PathBuf {
+        return PathBuf::new();
     }
 }
 
 pub mod xml_reader {
     extern crate quick_xml;
+    extern crate base64;
 
     use std::fs::File;
     use std::io::Write;
@@ -15,6 +45,7 @@ pub mod xml_reader {
     use self::quick_xml::reader::Reader;
     use self::quick_xml::events::Event;
     use std::iter;
+    use io_handler::{convert_b64_to_image, write_image_to_disk, create_image_dir, find_new_filename};
 
 
     pub fn read_xml(path: &Path) {
@@ -214,7 +245,6 @@ pub mod xml_reader {
         let msg_type = &vec_part[1];
         let name = if &vec_part[2] == null {
             vec_part[7].clone()
-            //iter::repeat(()).map(|()| thread_rng().sample(Alphanumeric)).take(7).collect::<String>()
         }
         else {
             vec_part[2].clone()
@@ -235,7 +265,8 @@ pub mod xml_reader {
         };
 
         //println!("{}",msg_type);
-        fs::create_dir_all("images").expect("unable to create images directory");
+        create_image_dir();
+//        fs::create_dir_all("images").expect("unable to create images directory");
 
         if(msg_type == jpg){
             //println!("FOUND JPEG TO WRITE TO FILE");
@@ -244,17 +275,21 @@ pub mod xml_reader {
                 jpg_contents = &vec_part[11];
             }
 
-            let mut ofile = File::create(&img_path).expect(&format!("Unable to open file: {}", img_path.display()));
-            ofile.write_all(jpg_contents.as_bytes());
-            println!("{}",&img_path.display());
+            let bytes = convert_b64_to_image(jpg_contents.to_string());
+            write_image_to_disk(img_path, bytes);
+            //let mut ofile = File::create(&img_path).expect(&format!("Unable to open file: {}", img_path.display()));
+            //ofile.write_all(jpg_contents.as_bytes());
+            //println!("{}",&img_path.display());
         }
         else if(msg_type == png){
             //println!("FOUND PNG TO WRITE TO FILE");
             let png_contents = &vec_part[11];
 
-            let mut ofile = File::create(&img_path).expect(&format!("Unable to open file: {}", img_path.display()));
-            ofile.write_all(png_contents.as_bytes());
-            println!("{}",&img_path.display());
+            let bytes = convert_b64_to_image(png_contents.to_string());
+            write_image_to_disk(img_path, bytes);
+            //let mut ofile = File::create(&img_path).expect(&format!("Unable to open file: {}", img_path.display()));
+            //ofile.write_all(png_contents.as_bytes());
+            //println!("{}",&img_path.display());
         }
         else if(msg_type == txt){
             //println!("FOUND TEXT OF AN IMAGE");
